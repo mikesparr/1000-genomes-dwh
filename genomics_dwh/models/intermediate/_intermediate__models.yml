@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: int_variants__annotated
+    description: "Distinct variants annotated with overlapping gene and ClinVar significance."
+    columns:
+      - name: variant_key
+        tests: [not_null]
+      - name: variant_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['SNV', 'INSERTION', 'DELETION', 'MNP', 'OTHER']
+
+  - name: int_patients__panel_designed
+    description: "Patients enriched with their personalized panel summary."
+    columns:
+      - name: patient_id
+        tests: [not_null, unique]
+      - name: panel_size
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 12
+                max_value: 20
+
+  - name: int_mrd__test_with_panel
+    description: "MRD tests joined to clinical context and per-test detection summary."
+    columns:
+      - name: test_id
+        tests: [not_null, unique]
+      - name: variants_detected_count
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 16
