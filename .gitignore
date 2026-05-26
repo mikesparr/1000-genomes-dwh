@@ -32,3 +32,4 @@ bronze/
 .DS_Store
 .vscode/
 .idea/
+synth/output/
