@@ -7,6 +7,7 @@ dispatch-macro architecture that ports cleanly to Snowflake (see `runbook/phase-
 
 ## Architecture
 
+```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart LR
     subgraph EXT["External & Simulated Sources"]
@@ -59,7 +60,7 @@ flowchart LR
     class B1,B2,B3 ing
     class C1,C2,C3 dw
     class D1,D2,D3,D4 cons
-
+```
 
 ## What's in this repo
 
