@@ -21,8 +21,8 @@ got the same result.
 - [Phase 4 - 9 staging views + source declarations](phase-4-staging.md)
 - [Phase 5 - 3 int tables + custom tests](phase-5-intermediate.md)
 - [Phase 6 - dimensions, facts, OBT marts, snapshot](phase-6-marts.md)
-- `TODO:` phase-7-snowflake.md       # port + benchmark capture (if completed)
-- `TODO:` phase-8-docs.md            # README, docs, analyses, this file
+- [Phase 7 - port + benchmark capture](phase-7-snowflake.md)
+- [Phase 8 - README, docs, analyses](phase-8-docs.md)
 
 ## Environment assumptions
 
