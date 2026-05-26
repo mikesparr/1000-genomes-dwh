@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'genomics_dwh/models/**'
+      - 'genomics_dwh/macros/**'
+      - 'genomics_dwh/dbt_project.yml'
 
 permissions:
   contents: write
@@ -21,11 +25,11 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: Install dbt and Dependencies
         run: |
-          pip install dbt-core dbt-duckdb
+          pip install dbt-duckdb dbt-utils
           dbt deps --project-dir ./genomics_dwh
 
       - name: Generate dbt Docs
