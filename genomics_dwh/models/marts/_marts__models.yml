@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: dim_patient
+    columns:
+      - name: patient_sk
+        tests: [not_null, unique]
+      - name: is_current
+        tests: [not_null]
+
+  - name: dim_variant
+    columns:
+      - name: variant_sk
+        tests: [not_null, unique]
+      - name: variant_key
+        tests: [not_null]
+
+  - name: fct_variant_observation
+    columns:
+      - name: observation_sk
+        tests: [not_null, unique]
+      - name: patient_sk
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_sk
+      - name: variant_sk
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_variant')
+                field: variant_sk
+
+  - name: fct_mrd_test
+    columns:
+      - name: test_sk
+        tests: [not_null, unique]
+      - name: patient_sk
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_patient')
+                field: patient_sk
+
+  - name: mart_clin__patient_timeline
+    columns:
+      - name: patient_sk
+        tests: [not_null, unique]
+
+  - name: mart_pharma__cohort_extract
+    columns:
+      - name: patient_sk_masked
+        tests: [not_null]
