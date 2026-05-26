@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_1kg__variants
+    description: "Typed, renamed view over per-sample chr22 variants from 1KG DRAGEN."
+    columns:
+      - name: variant_key
+        description: "Canonical chrom_pos_ref_alt key for cross-source joining."
+        tests: [not_null]
+      - name: sample_id
+        tests: [not_null]
+      - name: chromosome
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['chr22']  # in this slice; broaden when scaling up
+      - name: variant_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['SNV', 'INSERTION', 'DELETION', 'MNP', 'OTHER']
+
+  - name: stg_1kg__samples
+    description: "1000 Genomes sample metadata (population, sex)."
+    columns:
+      - name: sample_id
+        tests: [not_null, unique]
+      - name: super_population
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['AFR', 'AMR', 'EAS', 'EUR', 'SAS']
+      - name: sex_at_birth
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['male', 'female']

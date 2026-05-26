@@ -1,21 +1,37 @@
 [sqlfluff]
-# Jinja templater understands dbt's {{ ref() }}, {{ source() }}, {{ config() }}
-# without compiling via dbt. Faster than the 'dbt' templater, good enough for linting.
-templater = jinja
+# Templater: 'dbt' compiles via your dbt project so macros and packages resolve correctly.
+# Slower than 'jinja' (per-file dbt invocation) but accurate. Requires sqlfluff-templater-dbt
+# installed in the venv AND in pre-commit's hook sandbox (declared in .pre-commit-config.yaml).
+templater = dbt
 dialect = duckdb
 runaway_limit = 10
 max_line_length = 120
 indent_unit = space
 
-# Rules that tend to fight common dbt patterns. Add or remove as your style preferences solidify.
-exclude_rules = AM04, ST06, RF02
+# Rules that tend to fight common dbt and genomics patterns:
+# - AM04: ambiguous column references in `select * from cte` (dbt pattern)
+# - ST06: column ordering preferences (dbt pattern)
+# - RF02: qualified column references in single-table queries (dbt pattern)
+# - RF04: reserved words as identifiers (we use 'position' — universal in bioinformatics)
+exclude_rules = AM04, ST06, RF02, RF04
 
 [sqlfluff:indentation]
 tab_space_size = 4
 
+# dbt templater config — tells sqlfluff where the dbt project is, since pre-commit
+# runs hooks from the repo root but the dbt project is in a subdirectory.
+[sqlfluff:templater:dbt]
+project_dir = ./genomics_dwh
+profiles_dir = ~/.dbt
+
+# Jinja templater config — kept for reference even though we're not using it as the
+# active templater. If you ever switch back (templater = jinja above), this enables
+# awareness of dbt's built-in Jinja functions.
 [sqlfluff:templater:jinja]
 apply_dbt_builtins = true
 
+# Capitalization conventions matching dbt's modern style guide.
+# Lowercase keywords (`select`, not `SELECT`), identifiers, and functions.
 [sqlfluff:rules:capitalisation.keywords]
 capitalisation_policy = lower
 

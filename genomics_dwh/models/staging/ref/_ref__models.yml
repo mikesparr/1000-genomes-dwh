@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: stg_ref__genes
+    description: "GENCODE v44 gene annotation, chr22 only."
+    columns:
+      - name: ensembl_id
+        tests: [not_null, unique]
+      - name: gene_symbol
+        tests: [not_null]
+      - name: chromosome
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['chr22']  # in this slice; broaden when scaling up
+      - name: biotype
+        tests: [not_null]
+      - name: strand
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['+', '-']
+
+  - name: stg_ref__clinvar
+    description: "ClinVar variant clinical significance, chr22 only, normalized to chr-prefixed naming."
+    columns:
+      - name: variant_key
+        tests: [not_null]
+      - name: chromosome
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['chr22']

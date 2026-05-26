@@ -1,0 +1,76 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Lakehouse Bronze layer — Parquet files produced by Phase 2 and 3 loaders."
+    config:
+      meta:
+        external_location: "read_parquet('{{ env_var('DWH_REPO_ROOT', '..') }}/bronze/{name}.parquet')"
+    tables:
+      - name: raw_1kg__samples
+        description: "1000 Genomes sample panel (population, sex, family)"
+        columns:
+          - name: sample
+            tests: [not_null, unique]
+
+      - name: raw_synth__patients
+        description: "Synthetic patient demographics"
+        columns:
+          - name: patient_id
+            tests: [not_null, unique]
+          - name: sample_id_1kg
+            tests: [not_null]
+          - name: stage_at_diagnosis
+            tests:
+              - accepted_values:
+                  arguments:
+                    values: ['I', 'II', 'III', 'IV']
+
+      - name: raw_synth__panels
+        description: "Synthetic personalized panels (16 variants per patient)"
+        columns:
+          - name: patient_id
+            tests: [not_null]
+          - name: variant_key
+            tests: [not_null]
+
+      - name: raw_synth__mrd_tests
+        description: "Synthetic serial MRD test events"
+        columns:
+          - name: test_id
+            tests: [not_null, unique]
+
+      - name: raw_synth__mrd_detections
+        description: "Synthetic per-variant detection signals at each MRD test"
+        columns:
+          - name: detection_id
+            tests: [not_null, unique]
+
+      - name: raw_synth__clinical_events
+        description: "Synthetic clinical events (diagnosis, surgery, chemo, recurrence)"
+        columns:
+          - name: event_id
+            tests: [not_null, unique]
+
+      - name: raw_ref__genes
+        description: "GENCODE gene annotation, chr22 only"
+
+      - name: raw_ref__clinvar
+        description: "ClinVar variant clinical significance, chr22 only"
+
+  # The variant Parquet is hive-partitioned, so it needs a different read pattern.
+  - name: bronze_variants
+    description: "Per-sample chr22 variant Parquet (hive-partitioned)."
+    config:
+      meta:
+        external_location: "read_parquet('{{ env_var('DWH_REPO_ROOT', '..') }}/bronze/raw_1kg__variants/**/*.parquet', hive_partitioning=true)"
+    tables:
+      - name: raw_1kg__variants
+        description: "Per-sample chr22 variants from 1KG DRAGEN reanalysis"
+        columns:
+          - name: chromosome
+            tests: [not_null]
+          - name: position
+            tests: [not_null]
+          - name: sample_id
+            tests: [not_null]
