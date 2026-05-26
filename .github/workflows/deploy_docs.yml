@@ -1,0 +1,40 @@
+name: Deploy dbt Docs
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dbt
+        run: |
+          pip install dbt-core dbt-duckdb
+
+      - name: Generate dbt Docs
+        working-directory: ./genomics_dwh
+        env:
+          # Tells dbt to create a temporary, empty db file just for this run
+          DBT_DUCKDB_PATH: "./ci_warehouse.duckdb"
+        run: |
+          # --profiles-dir . forces dbt to look at genomics_dwh/profiles.yml
+          dbt docs generate --profiles-dir .
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./genomics_dwh/target
