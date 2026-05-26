@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy-docs:
     runs-on: ubuntu-latest
@@ -18,19 +21,18 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.10'
 
-      - name: Install dbt
+      - name: Install dbt and Dependencies
         run: |
           pip install dbt-core dbt-duckdb
+          dbt deps --project-dir ./genomics_dwh
 
       - name: Generate dbt Docs
         working-directory: ./genomics_dwh
         env:
-          # Tells dbt to create a temporary, empty db file just for this run
           DBT_DUCKDB_PATH: "./ci_warehouse.duckdb"
         run: |
-          # --profiles-dir . forces dbt to look at genomics_dwh/profiles.yml
           dbt docs generate --profiles-dir .
 
       - name: Deploy to GitHub Pages
