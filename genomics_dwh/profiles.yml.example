@@ -1,0 +1,15 @@
+# This file is for documentation/onboarding only. dbt does NOT read this file.
+# To use: copy the contents into ~/.dbt/profiles.yml, then update `path` below
+# to the absolute path of warehouse.duckdb on your machine.
+#
+# When you add Snowflake (Phase 7), add a `prod` output alongside `dev`.
+
+genomics_dwh:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Replace with absolute path on your machine, e.g.
+      # /Users/yourname/code/1000-genomes-dwh/warehouse.duckdb
+      path: /ABSOLUTE/PATH/TO/1000-genomes-dwh/warehouse.duckdb
+      threads: 4

@@ -1,0 +1,9 @@
+repos:
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.0.7
+    hooks:
+      - id: sqlfluff-lint
+        files: \.sql$
+        additional_dependencies:
+          - sqlfluff-templater-dbt
+          - dbt-duckdb
