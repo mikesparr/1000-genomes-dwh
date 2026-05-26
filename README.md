@@ -7,7 +7,59 @@ dispatch-macro architecture that ports cleanly to Snowflake (see `runbook/phase-
 
 ## Architecture
 
-[paste high-level mermaid diagram from project plan §2.1]
+%%{init: {'theme':'dark'}}%%
+flowchart LR
+    subgraph EXT["External & Simulated Sources"]
+        A1[("AWS Open Data<br/>1000 Genomes DRAGEN<br/>VCF / BAM / metrics")]
+        A2[("1000 Genomes<br/>Sample Panel TSV<br/>population, sex, family")]
+        A3[("Synthetic Clinical Data<br/>Python Faker + Markov")]
+        A4[("Synthetic MRD Panel +<br/>Serial Test Results")]
+        A5[("Public Refs<br/>GENCODE genes,<br/>ClinVar, gnomAD AF")]
+    end
+
+    subgraph INGEST["Ingestion Layer"]
+        B1["Python loader<br/>cyvcf2 / pysam"]
+        B2["dbt seeds<br/>(small ref data)"]
+        B3["DuckDB httpfs<br/>(reads S3 directly)"]
+    end
+
+    subgraph DW["Warehouse — DuckDB locally → Snowflake (Phase 7)"]
+        direction TB
+        C1["BRONZE<br/>raw_*"]
+        C2["SILVER<br/>stg_* / int_*"]
+        C3["GOLD<br/>fct_* / dim_* / mart_*"]
+        C1 --> C2 --> C3
+    end
+
+    subgraph CONS["Consumers"]
+        D1["Genomic researchers<br/>(SQL / notebooks)"]
+        D2["Clinical analysts<br/>(BI dashboards)"]
+        D3["Biostats / ML<br/>(feature stores)"]
+        D4["Pharma partners<br/>(governed extracts)"]
+    end
+
+    A1 --> B1 --> C1
+    A1 -. "or read direct" .-> B3
+    B3 --> C1
+    A2 --> B1
+    A3 --> B2
+    A4 --> B2
+    A5 --> B3
+    B2 --> C1
+    C3 --> D1
+    C3 --> D2
+    C3 --> D3
+    C3 --> D4
+
+    classDef ext fill:#1565c0,stroke:#90caf9,color:#fff,stroke-width:2px
+    classDef ing fill:#e65100,stroke:#ffb74d,color:#fff,stroke-width:2px
+    classDef dw fill:#2e7d32,stroke:#a5d6a7,color:#fff,stroke-width:2px
+    classDef cons fill:#6a1b9a,stroke:#ce93d8,color:#fff,stroke-width:2px
+    class A1,A2,A3,A4,A5 ext
+    class B1,B2,B3 ing
+    class C1,C2,C3 dw
+    class D1,D2,D3,D4 cons
+
 
 ## What's in this repo
 
