@@ -69,15 +69,15 @@ flowchart LR
 - `genomics_dwh/` — dbt project (9 staging views, 3 intermediate tables, 6 dimensions, 4 facts, 2 OBT marts, 1 snapshot, 91 tests)
 - `bronze/` — Lakehouse Bronze layer (Parquet on disk; gitignored)
 - `data/raw/` — Raw VCFs, reference data (gitignored)
-- `analyses/` — 10 persona-aligned analytical queries demonstrating real warehouse use
-- `docs/` — Architecture diagrams, dbt docs site, Snowflake benchmark captures
-- `runbook/` — Per-phase command logs with captured outputs (full reproducibility)
+- `analyses/` — `TODO:` 10 persona-aligned analytical queries demonstrating real warehouse use
+- `docs/` — `TODO:` Architecture diagrams, dbt docs site, Snowflake benchmark captures
+- `runbook/` — `TODO:` Per-phase command logs with captured outputs (full reproducibility)
 
 ## Running it from scratch
 
 ```bash
 # 1. Environment (one-time)
-python3.11 -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 brew install duckdb bcftools awscli
 
