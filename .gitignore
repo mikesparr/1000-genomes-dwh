@@ -19,7 +19,8 @@ logs/
 *.duckdb.tmp
 
 # Raw data — keep out of git
-data/raw/
+data/raw/*
+!data/raw/SLICE.md
 bronze/
 *.vcf
 *.vcf.gz
