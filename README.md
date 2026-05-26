@@ -1,7 +1,7 @@
 # 1000 Genomes Data Warehouse — Reference Implementation
 
 A medallion-architecture data warehouse that ingests 1000 Genomes Project germline VCFs,
-synthesizes Signatera-style MRD test data on top, and exposes a star schema plus governed
+synthesizes MRD test data on top, and exposes a star schema plus governed
 OBT marts for downstream analytical use cases. Built with dbt on DuckDB locally, with a
 dispatch-macro architecture that ports cleanly to Snowflake (see `runbook/phase-7-snowflake.md`).
 
