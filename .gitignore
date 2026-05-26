@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.envrc
+*.egg-info/
+
+# dbt
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# DuckDB (warehouse files can get huge — never commit)
+*.duckdb
+*.duckdb.wal
+*.duckdb.tmp
+
+# Raw data — keep out of git
+data/raw/
+bronze/
+*.vcf
+*.vcf.gz
+*.bam
+*.cram
+*.bcf
+
+# macOS / IDE noise
+.DS_Store
+.vscode/
+.idea/
