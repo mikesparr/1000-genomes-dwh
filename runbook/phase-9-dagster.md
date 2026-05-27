@@ -250,9 +250,146 @@ mkdir -p "$DAGSTER_HOME"
 dg dev -f definitions.py
 # CTRL+C to stop
 
-# commit changes
+# add workflows for dag validation and sql lint
 cd ..
+cat > .github/workflows/lint-sql.yml <<'EOF'
+name: Lint SQL with sqlfluff
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'genomics_dwh/**/*.sql'
+      - 'genomics_dwh/dbt_project.yml'
+      - 'genomics_dwh/packages.yml'
+      - '.sqlfluff'
+      - '.sqlfluffignore'
+      - '.pre-commit-config.yaml'
+  pull_request:
+    paths:
+      - 'genomics_dwh/**/*.sql'
+      - 'genomics_dwh/dbt_project.yml'
+      - 'genomics_dwh/packages.yml'
+      - '.sqlfluff'
+      - '.sqlfluffignore'
+      - '.pre-commit-config.yaml'
+  workflow_dispatch:
+
+jobs:
+  sqlfluff-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        # Matches the additional_dependencies in .pre-commit-config.yaml so the
+        # dbt templater works the same way locally and in CI.
+        run: |
+          pip install --upgrade pip
+          pip install \
+            sqlfluff==3.0.7 \
+            sqlfluff-templater-dbt \
+            dbt-duckdb
+
+      - name: Install dbt packages
+        # Required so that {{ dbt_utils.* }} references resolve during templating.
+        working-directory: ./genomics_dwh
+        run: dbt deps
+
+      - name: Generate dbt manifest
+        # The dbt templater needs a fresh manifest. --no-compile skips the
+        # database-touching compile step that isn't needed for templating.
+        working-directory: ./genomics_dwh
+        env:
+          DWH_REPO_ROOT: ${{ github.workspace }}
+        run: dbt parse --profiles-dir .
+
+      - name: Run sqlfluff lint
+        env:
+          DWH_REPO_ROOT: ${{ github.workspace }}
+        # Lint everything sqlfluff would lint locally. The .sqlfluff config at
+        # the repo root, the .sqlfluffignore exclusions, and the dbt templater
+        # all work the same way as they do in pre-commit.
+        run: sqlfluff lint genomics_dwh/
+EOF
+
+cat > .github/workflows/validate-dagster.yml <<'EOF'
+name: Validate Dagster Definitions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'loader/**'
+      - 'synth/**'
+      - 'orchestrator/**'
+      - 'genomics_dwh/models/**'
+      - 'genomics_dwh/macros/**'
+      - 'genomics_dwh/dbt_project.yml'
+      - 'genomics_dwh/packages.yml'
+      - 'genomics_dwh/profiles.yml'
+  pull_request:
+    paths:
+      - 'loader/**'
+      - 'synth/**'
+      - 'orchestrator/**'
+      - 'genomics_dwh/models/**'
+      - 'genomics_dwh/macros/**'
+      - 'genomics_dwh/dbt_project.yml'
+      - 'genomics_dwh/packages.yml'
+      - 'genomics_dwh/profiles.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-dagster:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            dbt-duckdb \
+            dagster \
+            dagster-webserver \
+            dagster-dbt \
+            dagster-duckdb
+
+      - name: Install dbt packages
+        working-directory: ./genomics_dwh
+        run: dbt deps
+
+      - name: Generate dbt manifest
+        working-directory: ./genomics_dwh
+        env:
+          DWH_REPO_ROOT: ${{ github.workspace }}
+        run: dbt parse --profiles-dir .
+
+      - name: Validate Dagster definitions load
+        working-directory: ./orchestrator
+        env:
+          DWH_REPO_ROOT: ${{ github.workspace }}
+        run: dagster definitions validate -f definitions.py
+EOF
+
+# commit changes
 git add .gitignore requirements.txt orchestrator/definitions.py
-git add genomics_dwh/models/staging/_sources.yml
-git commit -m "Add Dagster orchestration"
+git add genomics_dwh/models/staging/_sources.yml .github/workflows/*.yml
+git commit -m "Add Dagster orchestration and validation workflows"
 ```
