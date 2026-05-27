@@ -62,6 +62,12 @@ flowchart LR
     class D1,D2,D3,D4 cons
 ```
 
+## Dagster Orchestration Example
+See in `runbook/phase-9-dagster.md` how to set up Dagster to wrap Python and dbt 
+in a single asset graph.
+
+![Dagster Run](runbook/assets/dagster-run.png)
+
 ## What's in this repo
 
 - `loader/` — Python ingestion scripts (VCF → Parquet, panel TSV, GENCODE/ClinVar)

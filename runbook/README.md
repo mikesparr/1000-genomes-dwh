@@ -23,6 +23,7 @@ got the same result.
 - [Phase 6 - dimensions, facts, OBT marts, snapshot](phase-6-marts.md)
 - [Phase 7 - port + benchmark capture](phase-7-snowflake.md)
 - [Phase 8 - README, docs, analyses](phase-8-docs.md)
+- [Phase 9 - Dagster orchestration](phase-9-dagster.md)
 
 ## Environment assumptions
 
