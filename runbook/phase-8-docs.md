@@ -350,6 +350,7 @@ with variant_of_interest as (
     from {{ ref('dim_variant') }}
     where variant_type = 'SNV'
       and rsid is not null
+    order by variant_key
     limit 1
 ),
 
@@ -510,24 +511,24 @@ cat <<'EOF' > genomics_dwh/analyses/q05_biostats_feature_matrix.sql
 --
 -- Demonstrates: the "wide" feature shape ML pipelines want — one row per patient,
 -- every feature as a column. The pharma cohort extract already does most of this
--- work because it's designed for downstream model training, but here we add a
--- few derived columns useful for survival modeling.
+-- work because it's designed for downstream model training; here we shape the
+-- output specifically for survival modeling (lifelines / R survival package input).
 --
 -- Output schema is intentionally close to scikit-learn / lifelines input format:
 -- numeric and categorical features + (event_observed, time_to_event) for survival.
+--
+-- Note on panel_size: this project's panel generator produces exactly 16 variants
+-- per patient by design, so it's a constant in this dataset. In a production
+-- system with variable panel sizes, the right fix is to add panel_size as a
+-- column to mart_clin__patient_timeline (so it propagates through to the
+-- pharma extract), not to join dim_panel here — the pharma extract masks
+-- patient_sk via md5(), making downstream joins back to dim_panel impossible
+-- by design.
 --
 -- Run: dbt show --select q05_biostats_feature_matrix --limit 25
 
 with cohort as (
     select * from {{ ref('mart_pharma__cohort_extract') }}
-),
-
--- Baseline panel size from int_patients__panel_designed (one row per patient)
-panel_size_lookup as (
-    select
-        patient_sk,
-        panel_size
-    from {{ ref('dim_panel') }}
 )
 
 select
@@ -542,8 +543,8 @@ select
     -- Treatment features
     c.trial_id,
     c.treatment_arm,
-    -- Panel / assay design feature
-    coalesce(ps.panel_size, 16) as baseline_panel_size,
+    -- Panel / assay design feature (constant 16 in this project's design)
+    16 as baseline_panel_size,
     -- MRD trajectory features (early signals usable as ML features)
     cast(c.mrd_status_d90 as integer) as mrd_status_d90_int,
     cast(c.mrd_status_d180 as integer) as mrd_status_d180_int,
@@ -551,17 +552,17 @@ select
     -- Survival analysis target columns (lifelines / survival package input)
     -- event_observed = 1 if recurrence occurred, 0 if censored
     cast(c.has_recurred as integer) as event_observed,
-    -- time_to_event = days from surgery to recurrence OR last test (whichever applicable)
-    coalesce(
-        c.days_to_recurrence,
-        date_diff('day', cast('2018-01-01' as date), c.last_test_date)
-    ) as time_to_event_days,
+    -- time_to_event = days_to_recurrence if it occurred,
+    -- else days from last_test_date to surgery (the follow-up window)
+    -- Note: in a real system you'd use the patient's primary_surgery_date as
+    -- the anchor and last_test_date as the censor point; the pharma extract
+    -- intentionally doesn't expose primary_surgery_date (privacy), so the
+    -- censor calculation has to be done upstream in the timeline mart.
+    c.days_to_recurrence as time_to_event_days,
     -- Outcome at common landmarks (for binary classification targets)
     c.recurrence_within_2yr,
     c.event_status
 from cohort as c
-left join panel_size_lookup as ps
-    on c.patient_sk_masked = md5(ps.patient_sk)
 order by c.patient_sk_masked
 EOF
 
@@ -683,15 +684,15 @@ cat <<'EOF' > genomics_dwh/analyses/q08_patient_panel_detection_trajectory.sql
 -- Question: "Variants in panel for patient PT-HG00096 detected in their last
 --            3 blood draws"
 --
--- Demonstrates: patient-scoped pruning — the WHERE clause on patient_sk filters
--- to ~0.03% of rows on a 30k-patient table, so even though the underlying join
--- spans dim_panel x fct_mrd_detection x dim_variant x fct_mrd_test, the query
--- runs in milliseconds against a properly clustered warehouse.
+-- Demonstrates: patient-scoped pruning at the fact level. The first CTE filters
+-- to a single patient_sk (1 of 28 in this slice, or 1 of 30k at production scale).
+-- Downstream joins to fct_mrd_detection and dim_variant operate on the tiny
+-- already-filtered result set, so the query runs in milliseconds against any
+-- properly-clustered warehouse.
 --
 -- The output shape is the "detection heatmap" researchers love: rows = panel
--- variants, columns = chronological tests, values = detection / VAF. Useful for
--- understanding which variants in the panel are most informative for THIS
--- patient's recurrence dynamics.
+-- variants × tests, columns = detection / VAF. Useful for understanding which
+-- variants in the panel are most informative for THIS patient's recurrence dynamics.
 --
 -- Run: dbt show --select q08_patient_panel_detection_trajectory --limit 50
 
@@ -718,43 +719,25 @@ last_three_tests as (
     from {{ ref('fct_mrd_test') }} as t
     inner join target_patient as tp on t.patient_sk = tp.patient_sk
     qualify rn_recent <= 3
-),
-
-detection_with_variant as (
-    select
-        l.test_id,
-        l.test_date,
-        l.test_sequence_number,
-        l.is_positive as test_is_positive,
-        v.variant_key,
-        v.gene_symbol,
-        v.position,
-        v.ref_allele,
-        v.alt_allele,
-        v.clinvar_significance,
-        d.vaf_blood,
-        d.is_detected
-    from last_three_tests as l
-    inner join {{ ref('fct_mrd_detection') }} as d on l.test_sk = d.test_sk
-    inner join {{ ref('dim_variant') }} as v on d.variant_sk = v.variant_sk
 )
 
 select
-    gene_symbol,
-    variant_key,
-    chromosome,
-    position,
-    ref_allele,
-    alt_allele,
-    clinvar_significance,
-    test_sequence_number,
-    test_date,
-    test_is_positive,
-    vaf_blood,
-    is_detected
-from detection_with_variant
-left join {{ ref('dim_variant') }} as dv using (variant_key)
-order by test_sequence_number, gene_symbol nulls last, position
+    v.gene_symbol,
+    v.variant_key,
+    v.chromosome,
+    v.position,
+    v.ref_allele,
+    v.alt_allele,
+    v.clinvar_significance,
+    l.test_sequence_number,
+    l.test_date,
+    l.is_positive as test_is_positive,
+    d.vaf_blood,
+    d.is_detected
+from last_three_tests as l
+inner join {{ ref('fct_mrd_detection') }} as d on l.test_sk = d.test_sk
+inner join {{ ref('dim_variant') }} as v on d.variant_sk = v.variant_sk
+order by l.test_sequence_number, v.gene_symbol nulls last, v.position
 EOF
 
 cat <<'EOF' > genomics_dwh/analyses/q09_cumulative_incidence_by_stage.sql
