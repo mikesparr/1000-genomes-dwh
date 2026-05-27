@@ -29,7 +29,7 @@ jobs:
 
       - name: Install dbt and Dependencies
         run: |
-          pip install dbt-duckdb dbt-utils
+          pip install dbt-duckdb
           dbt deps --project-dir ./genomics_dwh
 
       - name: Generate dbt Docs
