@@ -1,0 +1,65 @@
+name: Lint SQL with sqlfluff
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'genomics_dwh/**/*.sql'
+      - 'genomics_dwh/dbt_project.yml'
+      - 'genomics_dwh/packages.yml'
+      - '.sqlfluff'
+      - '.sqlfluffignore'
+      - '.pre-commit-config.yaml'
+  pull_request:
+    paths:
+      - 'genomics_dwh/**/*.sql'
+      - 'genomics_dwh/dbt_project.yml'
+      - 'genomics_dwh/packages.yml'
+      - '.sqlfluff'
+      - '.sqlfluffignore'
+      - '.pre-commit-config.yaml'
+
+jobs:
+  sqlfluff-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        # Matches the additional_dependencies in .pre-commit-config.yaml so the
+        # dbt templater works the same way locally and in CI.
+        run: |
+          pip install --upgrade pip
+          pip install \
+            sqlfluff==3.0.7 \
+            sqlfluff-templater-dbt \
+            dbt-duckdb
+
+      - name: Install dbt packages
+        # Required so that {{ dbt_utils.* }} references resolve during templating.
+        working-directory: ./genomics_dwh
+        run: dbt deps
+
+      - name: Generate dbt manifest
+        # The dbt templater needs a fresh manifest. --no-compile skips the
+        # database-touching compile step that isn't needed for templating.
+        working-directory: ./genomics_dwh
+        env:
+          DWH_REPO_ROOT: ${{ github.workspace }}
+        run: dbt parse --profiles-dir .
+
+      - name: Run sqlfluff lint
+        env:
+          DWH_REPO_ROOT: ${{ github.workspace }}
+        # Lint everything sqlfluff would lint locally. The .sqlfluff config at
+        # the repo root, the .sqlfluffignore exclusions, and the dbt templater
+        # all work the same way as they do in pre-commit.
+        run: sqlfluff lint genomics_dwh/

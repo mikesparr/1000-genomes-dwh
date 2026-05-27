@@ -1,0 +1,63 @@
+name: Validate Dagster Definitions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'loader/**'
+      - 'synth/**'
+      - 'orchestrator/**'
+      - 'genomics_dwh/models/**'
+      - 'genomics_dwh/macros/**'
+      - 'genomics_dwh/dbt_project.yml'
+      - 'genomics_dwh/packages.yml'
+      - 'genomics_dwh/profiles.yml'
+  pull_request:
+    paths:
+      - 'loader/**'
+      - 'synth/**'
+      - 'orchestrator/**'
+      - 'genomics_dwh/models/**'
+      - 'genomics_dwh/macros/**'
+      - 'genomics_dwh/dbt_project.yml'
+      - 'genomics_dwh/packages.yml'
+      - 'genomics_dwh/profiles.yml'
+
+jobs:
+  validate-dagster:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            dbt-duckdb \
+            dagster \
+            dagster-webserver \
+            dagster-dbt \
+            dagster-duckdb
+
+      - name: Install dbt packages
+        working-directory: ./genomics_dwh
+        run: dbt deps
+
+      - name: Generate dbt manifest
+        working-directory: ./genomics_dwh
+        env:
+          DWH_REPO_ROOT: ${{ github.workspace }}
+        run: dbt parse --profiles-dir .
+
+      - name: Validate Dagster definitions load
+        working-directory: ./orchestrator
+        env:
+          DWH_REPO_ROOT: ${{ github.workspace }}
+        run: dagster definitions validate -f definitions.py
