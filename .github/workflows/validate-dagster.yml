@@ -23,6 +23,7 @@ on:
       - 'genomics_dwh/dbt_project.yml'
       - 'genomics_dwh/packages.yml'
       - 'genomics_dwh/profiles.yml'
+  workflow_dispatch:
 
 jobs:
   validate-dagster:

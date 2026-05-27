@@ -19,6 +19,7 @@ on:
       - '.sqlfluff'
       - '.sqlfluffignore'
       - '.pre-commit-config.yaml'
+  workflow_dispatch:
 
 jobs:
   sqlfluff-lint:

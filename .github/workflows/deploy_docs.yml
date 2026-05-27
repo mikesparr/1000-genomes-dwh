@@ -8,6 +8,7 @@ on:
       - 'genomics_dwh/models/**'
       - 'genomics_dwh/macros/**'
       - 'genomics_dwh/dbt_project.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
