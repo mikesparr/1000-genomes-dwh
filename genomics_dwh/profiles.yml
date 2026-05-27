@@ -6,3 +6,4 @@ genomics_dwh:
       type: duckdb
       # Looks for an environment variable; defaults to local root path if empty
       path: "{{ env_var('DBT_DUCKDB_PATH', '../warehouse.duckdb') }}"
+      threads: 4

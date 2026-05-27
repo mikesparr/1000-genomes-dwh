@@ -22,7 +22,7 @@ tab_space_size = 4
 # runs hooks from the repo root but the dbt project is in a subdirectory.
 [sqlfluff:templater:dbt]
 project_dir = ./genomics_dwh
-profiles_dir = ~/.dbt
+profiles_dir = ./genomics_dwh
 
 # Jinja templater config — kept for reference even though we're not using it as the
 # active templater. If you ever switch back (templater = jinja above), this enables
