@@ -12,6 +12,9 @@ sources:
         columns:
           - name: sample
             tests: [not_null, unique]
+        meta:
+          dagster:
+            asset_key: ["raw_1kg__samples"]
 
       - name: raw_synth__patients
         description: "Synthetic patient demographics"
@@ -25,6 +28,9 @@ sources:
               - accepted_values:
                   arguments:
                     values: ['I', 'II', 'III', 'IV']
+        meta:
+          dagster:
+            asset_key: ["raw_synth__patients"]
 
       - name: raw_synth__panels
         description: "Synthetic personalized panels (16 variants per patient)"
@@ -33,30 +39,48 @@ sources:
             tests: [not_null]
           - name: variant_key
             tests: [not_null]
+        meta:
+          dagster:
+            asset_key: ["raw_synth__panels"]
 
       - name: raw_synth__mrd_tests
         description: "Synthetic serial MRD test events"
         columns:
           - name: test_id
             tests: [not_null, unique]
+        meta:
+          dagster:
+            asset_key: ["raw_synth__mrd_tests"]
 
       - name: raw_synth__mrd_detections
         description: "Synthetic per-variant detection signals at each MRD test"
         columns:
           - name: detection_id
             tests: [not_null, unique]
+        meta:
+          dagster:
+            asset_key: ["raw_synth__mrd_detections"]
 
       - name: raw_synth__clinical_events
         description: "Synthetic clinical events (diagnosis, surgery, chemo, recurrence)"
         columns:
           - name: event_id
             tests: [not_null, unique]
+        meta:
+          dagster:
+            asset_key: ["raw_synth__clinical_events"]
 
       - name: raw_ref__genes
         description: "GENCODE gene annotation, chr22 only"
+        meta:
+          dagster:
+            asset_key: ["raw_ref__genes"]
 
       - name: raw_ref__clinvar
         description: "ClinVar variant clinical significance, chr22 only"
+        meta:
+          dagster:
+            asset_key: ["raw_ref__clinvar"]
 
   # The variant Parquet is hive-partitioned, so it needs a different read pattern.
   - name: bronze_variants
@@ -74,3 +98,6 @@ sources:
             tests: [not_null]
           - name: sample_id
             tests: [not_null]
+        meta:
+          dagster:
+            asset_key: ["raw_1kg__variants"]
