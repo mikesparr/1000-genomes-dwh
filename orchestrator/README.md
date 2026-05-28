@@ -109,7 +109,7 @@ dg dev -f definitions.py
 
 Then open <http://localhost:3000>:
 
-1. Click **Catalog** in the left sidebar (this is where assets live in current Dagster; older versions called this the "Assets" tab)
+1. Click **Catalog** in the left sidebar
 2. You'll see the full set of assets: ingestion → synth → dbt
 3. Select all rows (use the header checkbox to select everything, or filter then select)
 4. Click **Materialize** to run the selected assets in dependency order
