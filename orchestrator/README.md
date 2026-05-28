@@ -8,11 +8,11 @@ Imagine a factory assembly line. Raw materials come in one end (genomic data fil
 
 Without orchestration, you're running each station by hand — walk over to station 1, push the button, wait, walk to station 2, push that button, and so on. If you forget a step or run them out of order, you get a broken product and might not notice until much later.
 
-Dagster is the **factory control room**. One dashboard shows every station, what depends on what, what's currently running, what succeeded, what failed, and how long each took. Press one button ("Materialize all") and the whole line runs in the correct order automatically. That's what this folder provides.
+Dagster is the **factory control room**. One dashboard shows every station, what depends on what, what's currently running, what succeeded, what failed, and how long each took. Select the assets and hit "Materialize" and the whole line runs in the correct order automatically. That's what this folder provides.
 
 ## What Dagster actually orchestrates here
 
-Our pipeline has four stages, each represented as one or more Dagster **assets** (an asset = a thing that gets produced and stored, like a file or a table):
+Our pipeline has three stages, each represented as one or more Dagster **assets** (an asset = a thing that gets produced and stored, like a file or a table):
 
 ```mermaid
 flowchart TD
