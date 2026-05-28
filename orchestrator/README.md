@@ -73,7 +73,7 @@ flowchart TD
 
 The arrows in the diagram aren't decoration — they're enforced. Dagster won't start synthetic data generation until the 1KG sample list and variant data exist, because patients are assigned real sample backgrounds and panels are built from real germline variants. It won't start dbt until both the Bronze Parquet and the synthetic Parquet exist, because the staging models read from those files.
 
-**Picture this:** you can't frost a cake before you bake it, and you can't bake it before you mix the batter. Dagster knows the recipe order and refuses to do steps out of sequence. If you tried to run dbt first on a fresh machine, it would fail because the source files wouldn't exist yet. The dependency wiring prevents that entire class of mistake.
+> **Picture this:** you can't frost a cake before you bake it, and you can't bake it before you mix the batter. Dagster knows the recipe order and refuses to do steps out of sequence. If you tried to run dbt first on a fresh machine, it would fail because the source files wouldn't exist yet. The dependency wiring prevents that entire class of mistake.
 
 ## How the dependencies are wired
 
@@ -92,9 +92,11 @@ The dbt models are different. Dagster doesn't know dbt depends on the Python loa
 
 When `dbt parse` regenerates the manifest, Dagster reads these `meta.dagster.asset_key` entries and automatically wires each dbt model to the upstream Python asset it consumes. That's why each Bronze/synth Parquet file is its own named Dagster asset — so the dbt sources have something specific to point at.
 
-**Picture this:** the dbt sources are like return addresses on envelopes. Each one says "I came from the `raw_synth__patients` asset." Dagster reads the return address and draws the dependency arrow automatically. No manual wiring needed beyond declaring the addresses.
+> **Picture this:** the dbt sources are like return addresses on envelopes. Each one says "I came from the `raw_synth__patients` asset." Dagster reads the return address and draws the dependency arrow automatically. No manual wiring needed beyond declaring the addresses.
 
 ## Running it
+
+![Dagster Run](../runbook/assets/dagster-run.png)
 
 ```bash
 # From the orchestrator/ directory
@@ -133,7 +135,7 @@ The dbt project must have a generated manifest. The `DbtProject` helper in `defi
 
 ## Why this matters (the bigger picture)
 
-**Picture this:** the difference between a pile of scripts and a data platform is the difference between a box of car parts and a car. The parts might all be high quality, but until they're assembled into something that runs as a unit — with the engine connected to the transmission connected to the wheels — you don't have a vehicle.
+The difference between a pile of scripts and a data platform is the difference between a box of car parts and a car. The parts might all be high quality, but until they're assembled into something that runs as a unit — with the engine connected to the transmission connected to the wheels — you don't have a vehicle.
 
 Our Python loaders and dbt models are good parts. Dagster is the assembly. It turns "a collection of things that each do one job" into "a pipeline that produces analysis-ready data from raw inputs in one command, with full visibility into every step." That unified-graph view — raw data on one side, gold marts on the other, every dependency explicit — is the modern data platform mental model, and it's what separates a project from a product.
 
