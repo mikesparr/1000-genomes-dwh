@@ -174,3 +174,77 @@ sequenceDiagram
 This mapping follows the canonical dbt guidance: staging: +materialized: view, intermediate: +materialized: table, marts: +materialized: table.
 
 **The same materializations work in both DuckDB and Snowflake.** The differences show up only in the *physical optimization* layer — clustering keys, search optimization, automatic clustering services — which we'll wrap in Jinja conditionals (`{% if target.name == 'snowflake' %}`) so the project runs end-to-end in either target.
+
+---
+
+## Anticipated User Queries & Mart Design
+
+### The Personas
+
+```mermaid
+%%{init: {'theme':'dark'}}%%
+flowchart LR
+    P1["🧬 Genomic Researcher<br/>writes SQL, lives in notebooks"]
+    P2["📊 Clinical Analyst<br/>BI dashboards, ad-hoc questions"]
+    P3["🤖 Biostats / ML<br/>training cohorts, features"]
+    P4["🤝 Pharma Partner<br/>governed extracts only"]
+    P5["⚙️ Clin Ops<br/>operational dashboards"]
+
+    M1["fct_variant_observation<br/>+ dim_variant + dim_gene"]
+    M2["mart_clin__patient_timeline"]
+    M3["mart_pharma__cohort_extract<br/>(masked, filtered to consented cohort)"]
+    M4["fct_mrd_test + dim_patient"]
+
+    P1 --> M1
+    P1 --> M4
+    P2 --> M2
+    P2 --> M4
+    P3 --> M1
+    P3 --> M4
+    P4 --> M3
+    P5 --> M2
+```
+
+### Real Query Patterns You'll See
+
+> **Landmark analysis.** Every clinical question about MRD ends up as a "landmark" — a fixed time post-surgery (Day 90, Day 180, 1 year, 2 years) at which everyone's MRD status is evaluated. The reason: comparing patients fairly. If patient A had a test 2 weeks after surgery and patient B had a test 8 months after, comparing their results directly is meaningless. So you pick a landmark, find each patient's nearest test to that landmark within a window (say ±30 days), and treat that as their "Day 90 status." The `mart_clin__patient_timeline` precomputes these so dashboards don't have to.
+
+> **Censoring in survival analysis.** Some patients haven't had a recurrence yet — they're still being followed. We don't say "they didn't recur" (we don't know — they might tomorrow); we say they're "censored" at their last follow-up date. Censoring matters because dropping censored patients biases your analysis. Survival curves (Kaplan-Meier) handle this natively; biostats teams use them constantly.
+
+| # | Persona | Question | Hits which models | Why this mart helps |
+|---|---|---|---|---|
+| 1 | Researcher | "Pull all pathogenic variants in BRCA1/BRCA2 across European-ancestry samples" | `fct_variant_observation` ⋈ `dim_variant` ⋈ `dim_gene` ⋈ `dim_population` | Star joins; chrom+pos sorting prunes 99%+ of chunks |
+| 2 | Researcher | "What's the allele frequency of variant X by super-population?" | `fct_variant_observation` ⋈ `dim_population` | Aggregation; clustering on chrom+pos still helps if filter is by region |
+| 3 | Clinical analyst | "MRD positivity rate at 6, 12, 24 months post-surgery, by tumor type and stage" | `mart_clin__patient_timeline` | Pre-pivoted landmark analysis — single table, no joins for the dashboard |
+| 4 | Clinical analyst | "Show me patients who turned MRD+ before clinical recurrence — what was the lead time?" | `fct_mrd_test` ⋈ `fct_clinical_event` ⋈ `dim_patient` | Window function over patient timeline; also pre-computed in `mart_clin__patient_timeline` |
+| 5 | Biostats | "Build a feature matrix: per patient, baseline panel size, baseline ctDNA status, treatment arm, time-to-recurrence" | `mart_pharma__cohort_extract` | One row per patient, all features wide |
+| 6 | Pharma partner | "For trial NCT12345, give me MRD landmark status at day 90 stratified by treatment arm" | `mart_pharma__cohort_extract` filtered to that trial_id | Row-level access policy + governed mart |
+| 7 | Clin ops | "How many tests are pending result delivery > 7 days?" | `fct_mrd_test` (operational view on top) | Recent partitions only — clustering on test_date is doing all the work |
+| 8 | Researcher | "Variants in panel for patient HG00096 detected in their last 3 blood draws" | `dim_panel` ⋈ `fct_mrd_detection` ⋈ `dim_variant` | Patient-scoped query — patient_sk filter prunes ~99.97% on a 30k-patient table |
+| 9 | Biostats | "Cumulative incidence of recurrence by stage, censored at last visit" | `fct_clinical_event` + survival library | Long format, well-suited to time-to-event modeling |
+| 10 | Clinical analyst | "What % of patients have at least 4 serial tests by 12-month landmark?" | `mart_clin__patient_timeline` | Self-service dashboard; no SQL needed beyond the mart |
+
+### The Two Self-Service "OBT" Marts
+
+These exist *alongside* the star schema, deliberately denormalized for non-SQL-fluent users.
+
+**`mart_clin__patient_timeline`** — one row per (patient × landmark month):
+
+```
+patient_sk | landmark_month | tumor_type | stage_at_dx | mrd_status | mrd_positive_count_to_date | 
+last_test_date | days_since_surgery | recurrence_flag | days_to_recurrence | latest_treatment_regimen
+```
+
+This single table answers ~80% of clinical analyst questions without joins.
+
+**`mart_pharma__cohort_extract`** — one row per patient, governed by `WHERE consented_for_research = TRUE`:
+
+```
+patient_sk_masked | trial_id | tumor_type | stage_at_dx | treatment_arm | 
+panel_size | baseline_mrd_status | mrd_status_d90 | mrd_status_d180 | mrd_status_d365 | 
+recurrence_within_2yr | days_to_recurrence | days_to_death_or_censor
+```
+
+Pharma partners read this through a **share** with row-level filtering — they never see raw variant data, never see un-consented patients.
+
+> **What "consented for research" means in practice.** When a patient signs up for testing, they sign a consent form that may or may not allow their de-identified data to be shared with research partners (academic groups, pharma sponsors). The warehouse stores a flag per patient capturing that consent. Pharma extracts must filter on `consented_for_research = true`, full stop, and the data engineering job is to make that *technically impossible* to forget — typically via row access policies in Snowflake or a view layer that hard-codes the filter. This is often a regulatory and contractual requirement, not just a nice-to-have.
