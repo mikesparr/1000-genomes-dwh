@@ -44,6 +44,7 @@ jobs:
             dbt-duckdb \
             dagster \
             dagster-webserver \
+            dagster-dg-cli \
             dagster-dbt \
             dagster-duckdb
 
@@ -61,4 +62,9 @@ jobs:
         working-directory: ./orchestrator
         env:
           DWH_REPO_ROOT: ${{ github.workspace }}
+        # Use `dagster definitions validate -f` rather than `dg check defs` because
+        # this project uses a file-based layout (-f definitions.py), not the
+        # scaffolded dg project layout (which requires a dg.toml / pyproject.toml).
+        # Local dev still uses `dg dev` for the interactive UI; CI uses the
+        # file-based validator that matches our layout.
         run: dagster definitions validate -f definitions.py

@@ -15,7 +15,6 @@ Dagster is the **factory control room**. One dashboard shows every station, what
 Our pipeline has four stages, each represented as one or more Dagster **assets** (an asset = a thing that gets produced and stored, like a file or a table):
 
 ```mermaid
-%%{init: {'theme':'dark'}}%%
 flowchart TD
     subgraph ingestion["Ingestion (Python)"]
         A[raw_vcfs<br/>download 1KG VCFs<br/>extract chr22]
@@ -108,13 +107,14 @@ dg dev -f definitions.py
 
 Then open <http://localhost:3000>:
 
-1. Click **Assets** in the left sidebar (not Jobs — we use an asset-first design)
-2. You'll see the full DAG: ingestion → synth → dbt
-3. Click **Materialize all** (top right) to run the entire pipeline in dependency order
-4. Watch each asset move through Queued → Running → Materialized
-5. Click any asset to see its logs, run history, and metadata
+1. Click **Catalog** in the left sidebar (this is where assets live in current Dagster; older versions called this the "Assets" tab)
+2. You'll see the full set of assets: ingestion → synth → dbt
+3. Select all rows (use the header checkbox to select everything, or filter then select)
+4. Click **Materialize** to run the selected assets in dependency order
+5. Watch each asset move through Queued → Running → Materialized
+6. Click any asset to see its logs, run history, and metadata
 
-To run just part of the graph, right-click any asset and choose to materialize it (and optionally its upstream or downstream dependencies).
+To run just part of the graph, select only the assets you want in the Catalog (or use the lineage view), then Materialize. Selecting a downstream asset gives you the option to include its upstream dependencies.
 
 ## Files in this folder
 
